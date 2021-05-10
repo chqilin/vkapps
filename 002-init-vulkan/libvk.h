@@ -15,17 +15,17 @@ Func resolveVulkanEXT(VkInstance instance, const char* name, Func& ptr)
 
 #define _DEF_EXT_FUNC(extfunc) \
     if(nullptr == resolveVulkanEXT(instance, (#extfunc), (extfunc))) \
-        return false
+        throw std::runtime_error("vulkan extension not found: "#extfunc)
 
 struct VulkanExtensionFactory
 {
-    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
-    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
+    PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT;
+    PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT;
 
-    bool init(VkInstance instance)
+    void init(VkInstance instance)
     {
-        _DEF_EXT_FUNC(vkCreateDebugUtilsMessengerEXT);
-        _DEF_EXT_FUNC(vkDestroyDebugUtilsMessengerEXT);
+        _DEF_EXT_FUNC(vkCreateDebugReportCallbackEXT);
+        _DEF_EXT_FUNC(vkDestroyDebugReportCallbackEXT);
     }
 };
 
@@ -59,7 +59,7 @@ public:
 private:
     VkInstance instance;
     VulkanExtensionFactory extensionFactory;
-    VkDebugUtilsMessengerEXT debugMessenger;
+    VkDebugReportCallbackEXT debugCallback;
 };
 
 #endif//_LIBVK_H_

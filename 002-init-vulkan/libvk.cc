@@ -2,13 +2,17 @@
 #include "libvk.h"
 #include <iostream>
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+static VkBool32 VKAPI_PTR globalDebugCallback(
+    VkDebugReportFlagsEXT flags,
+    VkDebugReportObjectTypeEXT objectType,
+    uint64_t object,
+    size_t location,
+    int32_t messageCode,
+    const char* pLayerPrefix,
+    const char* pMessage,
     void* pUserData)
 {
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    std::cerr << "validation layer: " << pMessage << std::endl;
     return VK_FALSE;
 }
 
@@ -16,10 +20,8 @@ std::vector<VkExtensionProperties> enumerateExtensions()
 {
     uint32_t count = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
-
     std::vector<VkExtensionProperties> list(count);
     vkEnumerateInstanceExtensionProperties(nullptr, &count, list.data());
-
     return list;
 }
 
@@ -27,10 +29,8 @@ std::vector<VkLayerProperties> enumerateLayers()
 {
     uint32_t count = 0;
     vkEnumerateInstanceLayerProperties(&count, nullptr);
-
     std::vector<VkLayerProperties> list(count);
     vkEnumerateInstanceLayerProperties(&count, list.data());
-
     return list;
 }
 
@@ -43,7 +43,7 @@ std::vector<VulkanPhysicalDevice> VulkanApp::enumeratePhysicalDevices()
 VulkanApp::VulkanApp()
     : instance(nullptr)
     , extensionFactory()
-    , debugMessenger(nullptr)
+    , debugCallback(nullptr)
 {}
 
 VulkanApp::~VulkanApp()
@@ -74,10 +74,12 @@ bool VulkanApp::init(const VulkanAppInitArgs& args)
 
     ret = vkCreateInstance(&create, nullptr, &instance);
     if (ret != VK_SUCCESS)
+    {
+        throw std::runtime_error("init vulkan instance failed.");
         return false;
+    }
 
-    if(!extensionFactory.init(instance))
-        return false;
+    extensionFactory.init(instance);
 
     bool enabledDebug = false;
     for (auto& layer : args.layers)
@@ -90,18 +92,20 @@ bool VulkanApp::init(const VulkanAppInitArgs& args)
     }
     if (enabledDebug)
     {
-        VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        VkDebugReportCallbackCreateInfoEXT createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
         createInfo.pNext = nullptr;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo.pfnUserCallback = debugCallback;
+        createInfo.flags = 0;
+        createInfo.pfnCallback = globalDebugCallback;
         createInfo.pUserData = nullptr;
 
-        auto func = extensionFactory.vkCreateDebugUtilsMessengerEXT;
-        ret = func(instance, &createInfo, nullptr, &debugMessager);
+        auto func = extensionFactory.vkCreateDebugReportCallbackEXT;
+        ret = func(instance, &createInfo, nullptr, &debugCallback);
         if (ret != VK_SUCCESS)
+        {
+            throw std::runtime_error("create vulkan debug callback failed.");
             return false;
+        }
     }
 
     return true;
@@ -109,10 +113,10 @@ bool VulkanApp::init(const VulkanAppInitArgs& args)
 
 void VulkanApp::quit()
 {
-    if(debugMessenger != nullptr)
+    if (debugCallback != nullptr)
     {
-        extensionFactory.vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-        debugMessenger = nullptr;
+        extensionFactory.vkDestroyDebugReportCallbackEXT(instance, debugCallback, nullptr);
+        debugCallback = nullptr;
     }
     if (instance != nullptr)
     {
