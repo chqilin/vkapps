@@ -2,6 +2,10 @@
 #ifndef _VKAPPS_HEADER_H_
 #define _VKAPPS_HEADER_H_
 
+#ifndef _DEBUG
+#define _DEBUG 1
+#endif
+
 #ifndef _WINDOW_WIDTH
 #define _WINDOW_WIDTH 800
 #endif

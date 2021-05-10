@@ -16,7 +16,7 @@ static VkBool32 VKAPI_PTR globalDebugCallback(
     return VK_FALSE;
 }
 
-std::vector<VkExtensionProperties> enumerateExtensions()
+std::vector<VkExtensionProperties> VulkanApp::enumerateExtensions()
 {
     uint32_t count = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
@@ -25,7 +25,7 @@ std::vector<VkExtensionProperties> enumerateExtensions()
     return list;
 }
 
-std::vector<VkLayerProperties> enumerateLayers()
+std::vector<VkLayerProperties> VulkanApp::enumerateLayers()
 {
     uint32_t count = 0;
     vkEnumerateInstanceLayerProperties(&count, nullptr);

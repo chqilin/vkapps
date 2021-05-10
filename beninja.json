@@ -43,6 +43,7 @@
         "type": "executable",
 
         "defines": [
+            "_DEBUG",
             "_WINDOW_WIDTH=800",
             "_WINDOW_HEIGHT=600",
             "_WINDOW_TITLE=\"init-vulkan\""
@@ -60,7 +61,7 @@
         ],
 
         "sources": [
-            "./002-init-vulkan/**.cc"
+            "./002-init-vulkan/**/**.cc"
         ],
 
         "copies": [
