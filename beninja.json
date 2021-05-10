@@ -38,5 +38,37 @@
         "runtimes": [
             "@executable_path"
         ]
+    },{
+        "name":"002-init-vulkan",
+        "type": "executable",
+
+        "defines": [
+            "_WINDOW_WIDTH=800",
+            "_WINDOW_HEIGHT=600",
+            "_WINDOW_TITLE=\"init-vulkan\""
+        ],
+
+        "includes": [
+            "-I${glfwsdk}/include"
+        ],
+
+        "libraries": [
+            "-L${glfwsdk}/lib-universal",
+            "-lglfw.3",
+            "-lvulkan",
+            "-lvulkan.1"
+        ],
+
+        "sources": [
+            "./002-init-vulkan/**.cc"
+        ],
+
+        "copies": [
+            "${glfwsdk}/lib-universal/libglfw.3.dylib"
+        ],
+
+        "runtimes": [
+            "@executable_path"
+        ]
     }]
 }
