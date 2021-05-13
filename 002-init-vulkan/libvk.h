@@ -29,10 +29,14 @@ struct VulkanExtensionFactory
     }
 };
 
-class VulkanPhysicalDevice
+struct VulkanPhysicalDevice
 {
-public:
-
+    VkPhysicalDevice device;
+    VkPhysicalDeviceProperties props;
+    VkPhysicalDeviceFeatures features;
+    VkPhysicalDeviceLimits limits;
+    VkPhysicalDeviceMemoryProperties memoryProps;
+    std::vector<VkQueueFamilyProperties> queueFamilies;
 };
 
 struct VulkanAppInitArgs
@@ -48,13 +52,15 @@ class VulkanApp
 public:
     static std::vector<VkExtensionProperties> enumerateExtensions();
     static std::vector<VkLayerProperties> enumerateLayers();
-    static std::vector<VulkanPhysicalDevice> enumeratePhysicalDevices();
 
 public:
     VulkanApp();
     virtual ~VulkanApp();
-    bool init(const VulkanAppInitArgs& args);
+    void init(const VulkanAppInitArgs& args);
     void quit();
+
+    std::vector<VulkanPhysicalDevice> enumeratePhysicalDevices();
+
 
 private:
     VkInstance instance;

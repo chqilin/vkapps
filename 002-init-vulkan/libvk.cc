@@ -34,12 +34,6 @@ std::vector<VkLayerProperties> VulkanApp::enumerateLayers()
     return list;
 }
 
-std::vector<VulkanPhysicalDevice> VulkanApp::enumeratePhysicalDevices()
-{
-    std::vector<VulkanPhysicalDevice> list;
-    return list;
-}
-
 VulkanApp::VulkanApp()
     : instance(nullptr)
     , extensionFactory()
@@ -51,7 +45,7 @@ VulkanApp::~VulkanApp()
     this->quit();
 }
 
-bool VulkanApp::init(const VulkanAppInitArgs& args)
+void VulkanApp::init(const VulkanAppInitArgs& args)
 {
     VkResult ret = VK_SUCCESS;
 
@@ -76,7 +70,6 @@ bool VulkanApp::init(const VulkanAppInitArgs& args)
     if (ret != VK_SUCCESS)
     {
         throw std::runtime_error("init vulkan instance failed.");
-        return false;
     }
 
     extensionFactory.init(instance);
@@ -104,11 +97,8 @@ bool VulkanApp::init(const VulkanAppInitArgs& args)
         if (ret != VK_SUCCESS)
         {
             throw std::runtime_error("create vulkan debug callback failed.");
-            return false;
         }
     }
-
-    return true;
 }
 
 void VulkanApp::quit()
@@ -123,4 +113,28 @@ void VulkanApp::quit()
         vkDestroyInstance(instance, nullptr);
         instance = nullptr;
     }
+}
+
+std::vector<VulkanPhysicalDevice> VulkanApp::enumeratePhysicalDevices()
+{
+    uint32_t count = 0;
+    vkEnumeratePhysicalDevices(instance, &count, nullptr);
+    std::vector<VkPhysicalDevice> devices(count);
+    vkEnumeratePhysicalDevices(instance, &count, devices.data());
+
+    std::vector<VulkanPhysicalDevice> list(count);
+    for(size_t i = 0; i<count; i++)
+    {
+        auto& p = list.at(i);
+        p.device = devices.at(i);
+        vkGetPhysicalDeviceProperties(p.device, &p.props);
+        vkGetPhysicalDeviceFeatures(p.device, &p.features);
+        
+        uint32_t qfCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(p.device, &qfCount, nullptr);
+        p.queueFamilies.resize(qfCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(p.device, &qfCount, p.queueFamilies.data());
+    }
+
+    return list;
 }
