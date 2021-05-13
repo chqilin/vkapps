@@ -81,6 +81,11 @@ int main(int argc, char** argv) {
             }
         }
 
+        VkSurfaceKHR surface;
+        if (glfwCreateWindowSurface(app.instance, window, nullptr, &surface) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create window surface!");
+        }
+
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
         }

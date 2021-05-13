@@ -39,6 +39,8 @@ struct VulkanPhysicalDevice
     std::vector<VkQueueFamilyProperties> queueFamilies;
 };
 
+
+
 struct VulkanAppInitArgs
 {
     const char* appName;
@@ -62,7 +64,7 @@ public:
     std::vector<VulkanPhysicalDevice> enumeratePhysicalDevices();
 
 
-private:
+public:
     VkInstance instance;
     VulkanExtensionFactory extensionFactory;
     VkDebugReportCallbackEXT debugCallback;
