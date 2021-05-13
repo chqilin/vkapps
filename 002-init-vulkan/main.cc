@@ -9,7 +9,7 @@ const std::string hr = "--------------------------------------------------------
 const std::string tab(int n) {
     std::string str;
     for (int i = 0; i < n; i++) {
-        str += "    ";
+        str += "  ";
     }
     return str;
 }
@@ -64,6 +64,21 @@ int main(int argc, char** argv) {
         std::cout << hr;
         for (auto& dev : devices) {
             std::cout << tab(1) << dev.props.deviceName << std::endl;
+            std::cout << tab(2) << "queue families: " << dev.queueFamilies.size() << std::endl;
+            for (size_t i = 0; i < dev.queueFamilies.size(); i++) {
+                std::cout << tab(3) << i << ">" << std::endl;
+                auto& queueFamily = dev.queueFamilies.at(i);
+                std::cout << tab(4) << "queue count: " << queueFamily.queueCount << std::endl;
+                auto flags = queueFamily.queueFlags;
+                std::cout << tab(4) << "queue flags:";
+                if (flags & VK_QUEUE_GRAPHICS_BIT)std::cout << " GRAPHICS";
+                if (flags & VK_QUEUE_COMPUTE_BIT) std::cout << " COMPUTE";
+                if (flags & VK_QUEUE_TRANSFER_BIT) std::cout << " TRANSFER";
+                if (flags & VK_QUEUE_SPARSE_BINDING_BIT) std::cout << " SPARSE";
+                if (flags & VK_QUEUE_PROTECTED_BIT)std::cout << " PROTECTED";
+                std::cout << std::endl;
+
+            }
         }
 
         while (!glfwWindowShouldClose(window)) {
