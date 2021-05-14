@@ -81,6 +81,10 @@ int main(int argc, char** argv) {
             }
         }
 
+        VulkanLogicalDeviceInitArgs logicalDeviceInitArgs;
+        logicalDeviceInitArgs.queueFamilyIndex = 0;
+        const auto& context = devices[0].createLogicalDevice(logicalDeviceInitArgs);
+        
         VkSurfaceKHR surface;
         if (glfwCreateWindowSurface(app.instance, window, nullptr, &surface) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create window surface!");

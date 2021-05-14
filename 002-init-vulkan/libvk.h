@@ -29,6 +29,19 @@ struct VulkanExtensionFactory
     }
 };
 
+struct VulkanLogicalDeviceInitArgs
+{
+    uint32_t queueFamilyIndex;
+    std::vector<const char*> extensions;
+    std::vector<const char*> layers;
+};
+
+struct VulkanLogicalDevice
+{
+    VkDevice device;
+    VkQueue queue;
+};
+
 struct VulkanPhysicalDevice
 {
     VkPhysicalDevice device;
@@ -37,9 +50,9 @@ struct VulkanPhysicalDevice
     VkPhysicalDeviceLimits limits;
     VkPhysicalDeviceMemoryProperties memoryProps;
     std::vector<VkQueueFamilyProperties> queueFamilies;
+
+    VulkanLogicalDevice createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const;
 };
-
-
 
 struct VulkanAppInitArgs
 {
@@ -62,7 +75,7 @@ public:
     void quit();
 
     std::vector<VulkanPhysicalDevice> enumeratePhysicalDevices();
-
+    
 
 public:
     VkInstance instance;

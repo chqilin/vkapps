@@ -16,6 +16,48 @@ static VkBool32 VKAPI_PTR globalDebugCallback(
     return VK_FALSE;
 }
 
+VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const
+{
+    float queuePriority = 1.0f;
+
+    VkPhysicalDeviceFeatures features = {};
+
+    VkDeviceQueueCreateInfo qci = {};
+    qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    qci.pNext = nullptr;
+    qci.queueFamilyIndex = args.queueFamilyIndex;
+    qci.queueCount = 1;
+    qci.pQueuePriorities = &queuePriority;
+
+    VkDeviceCreateInfo dci = {};
+    dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    dci.pNext = nullptr;
+    dci.queueCreateInfoCount = 1;
+    dci.pQueueCreateInfos = &qci;
+    dci.pEnabledFeatures = &features;
+
+    dci.enabledExtensionCount = args.extensions.size();
+    dci.ppEnabledExtensionNames = args.extensions.data();
+
+    dci.enabledLayerCount = args.layers.size();
+    dci.ppEnabledLayerNames = args.layers.data();
+
+    VkDevice logicalDevice = nullptr;
+    if (VK_SUCCESS != vkCreateDevice(device, &dci, nullptr, &logicalDevice))
+    {
+        throw std::runtime_error("create logical device failed.");
+    }
+
+    VkQueue queue = nullptr;
+    vkGetDeviceQueue(logicalDevice, args.queueFamilyIndex, 0, &queue);
+
+    VulkanLogicalDevice ret = {};
+    ret.device = logicalDevice;
+    ret.queue = queue;
+
+    return ret;
+}
+
 std::vector<VkExtensionProperties> VulkanApp::enumerateExtensions()
 {
     uint32_t count = 0;
@@ -123,13 +165,13 @@ std::vector<VulkanPhysicalDevice> VulkanApp::enumeratePhysicalDevices()
     vkEnumeratePhysicalDevices(instance, &count, devices.data());
 
     std::vector<VulkanPhysicalDevice> list(count);
-    for(size_t i = 0; i<count; i++)
+    for (size_t i = 0; i < count; i++)
     {
         auto& p = list.at(i);
         p.device = devices.at(i);
         vkGetPhysicalDeviceProperties(p.device, &p.props);
         vkGetPhysicalDeviceFeatures(p.device, &p.features);
-        
+
         uint32_t qfCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(p.device, &qfCount, nullptr);
         p.queueFamilies.resize(qfCount);
