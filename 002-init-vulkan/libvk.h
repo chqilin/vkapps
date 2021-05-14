@@ -42,6 +42,14 @@ struct VulkanLogicalDevice
     VkQueue queue;
 };
 
+struct VulkanSwapchainSupport
+{
+    VkSurfaceKHR surface;
+    VkSurfaceCapabilitiesKHR capabiliteis;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> presentModes;
+};
+
 struct VulkanPhysicalDevice
 {
     VkPhysicalDevice device;
@@ -54,6 +62,7 @@ struct VulkanPhysicalDevice
     std::vector<VkExtensionProperties> enumerateExtensions();
     std::vector<VkLayerProperties> enumerateLayers();
     VulkanLogicalDevice createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const;
+    VulkanSwapchainSupport checkSwapchainSupport(VkSurfaceKHR surface);
 };
 
 struct VulkanAppInitArgs

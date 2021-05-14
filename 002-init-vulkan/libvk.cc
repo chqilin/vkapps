@@ -76,6 +76,26 @@ VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogica
     return ret;
 }
 
+VulkanSwapchainSupport VulkanPhysicalDevice::checkSwapchainSupport(VkSurfaceKHR surface)
+{
+    VulkanSwapchainSupport support;
+    support.surface = surface;
+
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &support.capabiliteis);
+
+    uint32_t formatCount = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+    support.formats.resize(formatCount);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, support.formats.data());
+
+    uint32_t presentModeCount = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+    support.presentModes.resize(presentModeCount);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, support.presentModes.data());
+
+    return support;
+}
+
 std::vector<VkExtensionProperties> VulkanApp::enumerateExtensions()
 {
     uint32_t count = 0;
