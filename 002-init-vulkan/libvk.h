@@ -51,6 +51,8 @@ struct VulkanPhysicalDevice
     VkPhysicalDeviceMemoryProperties memoryProps;
     std::vector<VkQueueFamilyProperties> queueFamilies;
 
+    std::vector<VkExtensionProperties> enumerateExtensions();
+    std::vector<VkLayerProperties> enumerateLayers();
     VulkanLogicalDevice createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const;
 };
 

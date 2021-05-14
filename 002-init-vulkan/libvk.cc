@@ -16,6 +16,24 @@ static VkBool32 VKAPI_PTR globalDebugCallback(
     return VK_FALSE;
 }
 
+std::vector<VkExtensionProperties> VulkanPhysicalDevice::enumerateExtensions()
+{
+    uint32_t count = 0;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+    std::vector<VkExtensionProperties> list(count);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &count, list.data());
+    return list;
+}
+
+std::vector<VkLayerProperties> VulkanPhysicalDevice::enumerateLayers()
+{
+    uint32_t count = 0;
+    vkEnumerateDeviceLayerProperties(device, &count, nullptr);
+    std::vector<VkLayerProperties> list(count);
+    vkEnumerateDeviceLayerProperties(device, &count, list.data());
+    return list;
+}
+
 VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const
 {
     float queuePriority = 1.0f;
