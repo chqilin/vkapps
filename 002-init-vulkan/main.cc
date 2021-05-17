@@ -81,14 +81,18 @@ int main(int argc, char** argv) {
             }
         }
 
+        const auto& physicalDevice = devices.at(0);
+
         VulkanLogicalDeviceInitArgs logicalDeviceInitArgs;
         logicalDeviceInitArgs.queueFamilyIndex = 0;
-        const auto& context = devices[0].createLogicalDevice(logicalDeviceInitArgs);
+        const auto& logicalDevice = physicalDevice.createLogicalDevice(logicalDeviceInitArgs);
         
         VkSurfaceKHR surface;
         if (glfwCreateWindowSurface(app.instance, window, nullptr, &surface) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create window surface!");
         }
+
+        const auto& swapchainSupport = physicalDevice.checkSwapchainSupport(surface);
 
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();

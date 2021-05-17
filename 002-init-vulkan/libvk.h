@@ -36,18 +36,46 @@ struct VulkanLogicalDeviceInitArgs
     std::vector<const char*> layers;
 };
 
-struct VulkanLogicalDevice
-{
-    VkDevice device;
-    VkQueue queue;
-};
-
 struct VulkanSwapchainSupport
 {
     VkSurfaceKHR surface;
     VkSurfaceCapabilitiesKHR capabiliteis;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
+};
+
+struct QueueFamilyIndices
+{
+    uint32_t graphicsQueueFamilyIndex;
+    uint32_t presentQueueFamilyIndex;
+};
+
+struct VulkanSwapchainArgs
+{
+    VkSurfaceKHR surface;
+    VkExtent2D extent;
+    int minImageCount;
+    VkSurfaceFormatKHR format;
+    VkPresentModeKHR presentMode;
+    QueueFamilyIndices queueFamilyIndices;
+    VkSurfaceTransformFlagBitsKHR preTransform;
+};
+
+struct VulkanSwapchain
+{
+    VkSwapchainKHR handle;
+    VkFormat format;
+    VkExtent2D extent;
+    std::vector<VkImage> images;
+};
+
+struct VulkanLogicalDevice
+{
+    VkDevice device;
+    VkQueue queue;
+
+    VulkanSwapchain createSwapchain(const VulkanSwapchainArgs& args);
+    void destroySwapchain(const VulkanSwapchain& swapchain);
 };
 
 struct VulkanPhysicalDevice
@@ -59,10 +87,10 @@ struct VulkanPhysicalDevice
     VkPhysicalDeviceMemoryProperties memoryProps;
     std::vector<VkQueueFamilyProperties> queueFamilies;
 
-    std::vector<VkExtensionProperties> enumerateExtensions();
-    std::vector<VkLayerProperties> enumerateLayers();
+    std::vector<VkExtensionProperties> enumerateExtensions() const;
+    std::vector<VkLayerProperties> enumerateLayers() const;
     VulkanLogicalDevice createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const;
-    VulkanSwapchainSupport checkSwapchainSupport(VkSurfaceKHR surface);
+    VulkanSwapchainSupport checkSwapchainSupport(VkSurfaceKHR surface) const;
 };
 
 struct VulkanAppInitArgs
@@ -86,7 +114,7 @@ public:
     void quit();
 
     std::vector<VulkanPhysicalDevice> enumeratePhysicalDevices();
-    
+
 
 public:
     VkInstance instance;

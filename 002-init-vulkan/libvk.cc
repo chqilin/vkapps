@@ -16,7 +16,71 @@ static VkBool32 VKAPI_PTR globalDebugCallback(
     return VK_FALSE;
 }
 
-std::vector<VkExtensionProperties> VulkanPhysicalDevice::enumerateExtensions()
+VulkanSwapchain VulkanLogicalDevice::createSwapchain(const VulkanSwapchainArgs& args)
+{
+    VkSwapchainCreateInfoKHR sci = {};
+    sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    sci.pNext = nullptr;
+    sci.surface = args.surface;
+    sci.minImageCount = args.minImageCount;
+    sci.imageFormat = args.format.format;
+    sci.imageColorSpace = args.format.colorSpace;
+    sci.imageExtent = args.extent;
+    sci.imageArrayLayers = 1;
+    sci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    uint32_t indices[] = {
+        args.queueFamilyIndices.graphicsQueueFamilyIndex,
+        args.queueFamilyIndices.presentQueueFamilyIndex
+    };
+    if (indices[0] != indices[1])
+    {
+        sci.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        sci.queueFamilyIndexCount = 2;
+        sci.pQueueFamilyIndices = indices;
+    }
+    else
+    {
+        sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        sci.queueFamilyIndexCount = 0;
+        sci.pQueueFamilyIndices = nullptr;
+    }
+
+    sci.preTransform = args.preTransform;
+    sci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
+    sci.presentMode = args.presentMode;
+    sci.clipped = VK_TRUE;
+
+    sci.oldSwapchain = VK_NULL_HANDLE;
+
+    VulkanSwapchain swapchain = {};
+    if (VK_SUCCESS != vkCreateSwapchainKHR(device, &sci, nullptr, &swapchain.handle))
+    {
+        throw std::runtime_error("create swapchain failed.");
+    }
+
+    swapchain.format = args.format.format;
+    swapchain.extent = args.extent;
+
+    uint32_t swapchainImageCount = 0;
+    vkGetSwapchainImagesKHR(device, swapchain.handle, &swapchainImageCount, nullptr);
+    swapchain.images.resize(swapchainImageCount);
+    vkGetSwapchainImagesKHR(device, swapchain.handle, &swapchainImageCount, swapchain.images.data());
+
+    return swapchain;
+}
+
+void VulkanLogicalDevice::destroySwapchain(const VulkanSwapchain& swapchain)
+{
+    if (swapchain.handle != nullptr)
+    {
+        vkDestroySwapchainKHR(device, swapchain.handle, nullptr);
+    }
+
+}
+
+std::vector<VkExtensionProperties> VulkanPhysicalDevice::enumerateExtensions() const
 {
     uint32_t count = 0;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
@@ -25,7 +89,7 @@ std::vector<VkExtensionProperties> VulkanPhysicalDevice::enumerateExtensions()
     return list;
 }
 
-std::vector<VkLayerProperties> VulkanPhysicalDevice::enumerateLayers()
+std::vector<VkLayerProperties> VulkanPhysicalDevice::enumerateLayers() const
 {
     uint32_t count = 0;
     vkEnumerateDeviceLayerProperties(device, &count, nullptr);
@@ -76,7 +140,7 @@ VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogica
     return ret;
 }
 
-VulkanSwapchainSupport VulkanPhysicalDevice::checkSwapchainSupport(VkSurfaceKHR surface)
+VulkanSwapchainSupport VulkanPhysicalDevice::checkSwapchainSupport(VkSurfaceKHR surface) const
 {
     VulkanSwapchainSupport support;
     support.surface = surface;
