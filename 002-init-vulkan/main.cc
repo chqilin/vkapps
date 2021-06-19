@@ -4,6 +4,23 @@
 
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <fstream>
+
+static std::vector<char> readFile(const std::string& filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("failed to open file!");
+    }
+
+    size_t size = (size_t)file.tellg();
+    std::vector<char> buffer(size);
+    file.seekg(0);
+    file.read(buffer.data(), size);
+
+    file.close();
+
+    return buffer;
+}
 
 const std::string hr = "------------------------------------------------------------\n";
 const std::string tab(int n) {
@@ -129,7 +146,7 @@ int main(int argc, char** argv) {
             }
             std::cout << std::endl;
         }
-        
+
         std::cout << std::endl << "device layers count: " << deviceLayers.size() << std::endl;
         std::cout << hr;
         for (auto& l : deviceLayers)
@@ -141,7 +158,7 @@ int main(int argc, char** argv) {
             }
             std::cout << std::endl;
         }
-        std::cout<< std::endl;
+        std::cout << std::endl;
 
         auto logicalDevice = physicalDevice.createLogicalDevice(logicalDeviceInitArgs);
         std::cout << "LogicalDevice created: " << (size_t)logicalDevice.device << std::endl;
@@ -184,10 +201,17 @@ int main(int argc, char** argv) {
         swapchainArgs.preTransform = swapchainSupport.capabilities.currentTransform;
         VulkanSwapchain swapchain = logicalDevice.createSwapchain(swapchainArgs);
 
+        VulkanGraphicsPipelineArgs pipelineArgs = {};
+        pipelineArgs.vert = readFile("./shader.vert.spv");
+        pipelineArgs.frag = readFile("./shader.frag.spv");
+        auto pipeline = logicalDevice.createGraphicsPipeline(pipelineArgs);
+
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
         }
 
+        logicalDevice.destroyGraphicsPipeline(pipeline);
+        logicalDevice.destroySwapchain(swapchain);
         physicalDevice.destroyLogicalDevice(logicalDevice);
 
         vkDestroySurfaceKHR(app.instance, surface, nullptr);

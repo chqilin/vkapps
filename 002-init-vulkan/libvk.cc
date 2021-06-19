@@ -89,7 +89,7 @@ VulkanSwapchain VulkanLogicalDevice::createSwapchain(const VulkanSwapchainArgs& 
         ivci.subresourceRange.baseArrayLayer = 0;
         ivci.subresourceRange.layerCount = 1;
 
-        if(VK_SUCCESS != vkCreateImageView(device, &ivci, nullptr, &swapchain.imageViews[i]))
+        if (VK_SUCCESS != vkCreateImageView(device, &ivci, nullptr, &swapchain.imageViews[i]))
         {
             throw std::runtime_error("create image-view for swapchain failed.");
         }
@@ -98,13 +98,89 @@ VulkanSwapchain VulkanLogicalDevice::createSwapchain(const VulkanSwapchainArgs& 
     return swapchain;
 }
 
-void VulkanLogicalDevice::destroySwapchain(const VulkanSwapchain& swapchain) const
+void VulkanLogicalDevice::destroySwapchain(VulkanSwapchain& swapchain) const
 {
+    for (auto& imageView : swapchain.imageViews)
+    {
+        if (imageView != nullptr)
+        {
+            vkDestroyImageView(device, imageView, nullptr);
+            imageView = nullptr;
+        }
+    }
     if (swapchain.handle != nullptr)
     {
         vkDestroySwapchainKHR(device, swapchain.handle, nullptr);
+        swapchain.handle = nullptr;
     }
 
+}
+
+VkShaderModule VulkanLogicalDevice::createShaderModule(const std::vector<char>& code) const
+{
+    VkShaderModuleCreateInfo smci = {};
+    smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    smci.pNext = nullptr;
+    smci.codeSize = code.size();
+    smci.pCode = reinterpret_cast<const uint32_t*>(code.data());
+    VkShaderModule shader;
+    if (VK_SUCCESS != vkCreateShaderModule(device, &smci, nullptr, &shader))
+    {
+        throw std::runtime_error("create shader module failed.");
+    }
+
+    return shader;
+}
+
+void VulkanLogicalDevice::destroyShaderModule(VkShaderModule shader) const
+{
+    if (shader != nullptr)
+    {
+        vkDestroyShaderModule(device, shader, nullptr);
+    }
+}
+
+VulkanGraphicsPipeline VulkanLogicalDevice::createGraphicsPipeline(const VulkanGraphicsPipelineArgs& args) const
+{
+    VkShaderModule vert = this->createShaderModule(args.vert);
+    VkShaderModule frag = this->createShaderModule(args.frag);
+
+    VkPipelineShaderStageCreateInfo vsci = {};
+    vsci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vsci.pNext = nullptr;
+    vsci.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vsci.module = vert;
+    vsci.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fsci = {};
+    fsci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fsci.pNext = nullptr;
+    fsci.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fsci.module = frag;
+    fsci.pName = "main";
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {
+        vsci, fsci
+    };
+
+    VulkanGraphicsPipeline pipeline = {};
+    pipeline.vert = vert;
+    pipeline.frag = frag;
+    return pipeline;
+}
+
+void VulkanLogicalDevice::destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeline) const
+{
+    if (pipeline.vert != nullptr)
+    {
+        this->destroyShaderModule(pipeline.vert);
+        pipeline.vert = nullptr;
+    }
+    if (pipeline.frag != nullptr)
+    {
+        this->destroyShaderModule(pipeline.frag);
+        pipeline.frag = nullptr;
+    }
 }
 
 std::vector<VkExtensionProperties> VulkanPhysicalDevice::enumerateExtensions() const

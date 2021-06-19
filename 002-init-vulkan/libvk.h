@@ -71,13 +71,31 @@ struct VulkanSwapchain
     std::vector<VkImageView> imageViews;
 };
 
+struct VulkanGraphicsPipelineArgs
+{
+    std::vector<char> vert;
+    std::vector<char> frag;
+};
+
+struct VulkanGraphicsPipeline
+{
+    VkShaderModule vert;
+    VkShaderModule frag;
+};
+
 struct VulkanLogicalDevice
 {
     VkDevice device;
     VkQueue queue;
 
     VulkanSwapchain createSwapchain(const VulkanSwapchainArgs& args) const;
-    void destroySwapchain(const VulkanSwapchain& swapchain) const;
+    void destroySwapchain(VulkanSwapchain& swapchain) const;
+
+    VkShaderModule createShaderModule(const std::vector<char>& code) const;
+    void destroyShaderModule(VkShaderModule shader) const;
+
+    VulkanGraphicsPipeline createGraphicsPipeline(const VulkanGraphicsPipelineArgs& args) const;
+    void destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeline) const;
 };
 
 struct VulkanPhysicalDevice
