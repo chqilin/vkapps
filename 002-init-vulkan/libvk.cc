@@ -16,7 +16,7 @@ static VkBool32 VKAPI_PTR globalDebugCallback(
     return VK_FALSE;
 }
 
-VulkanSwapchain VulkanLogicalDevice::createSwapchain(const VulkanSwapchainArgs& args)
+VulkanSwapchain VulkanLogicalDevice::createSwapchain(const VulkanSwapchainArgs& args) const
 {
     VkSwapchainCreateInfoKHR sci = {};
     sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -68,10 +68,37 @@ VulkanSwapchain VulkanLogicalDevice::createSwapchain(const VulkanSwapchainArgs& 
     swapchain.images.resize(swapchainImageCount);
     vkGetSwapchainImagesKHR(device, swapchain.handle, &swapchainImageCount, swapchain.images.data());
 
+    swapchain.imageViews.resize(swapchainImageCount);
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        VkImageViewCreateInfo ivci = {};
+        ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        ivci.pNext = nullptr;
+        ivci.image = swapchain.images.at(i);
+        ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        ivci.format = swapchain.format;
+
+        ivci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        ivci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        ivci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        ivci.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+        ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        ivci.subresourceRange.baseMipLevel = 0;
+        ivci.subresourceRange.levelCount = 1;
+        ivci.subresourceRange.baseArrayLayer = 0;
+        ivci.subresourceRange.layerCount = 1;
+
+        if(VK_SUCCESS != vkCreateImageView(device, &ivci, nullptr, &swapchain.imageViews[i]))
+        {
+            throw std::runtime_error("create image-view for swapchain failed.");
+        }
+    }
+
     return swapchain;
 }
 
-void VulkanLogicalDevice::destroySwapchain(const VulkanSwapchain& swapchain)
+void VulkanLogicalDevice::destroySwapchain(const VulkanSwapchain& swapchain) const
 {
     if (swapchain.handle != nullptr)
     {
@@ -140,12 +167,29 @@ VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogica
     return ret;
 }
 
+void VulkanPhysicalDevice::destroyLogicalDevice(VulkanLogicalDevice& logicalDevice) const
+{
+    if (logicalDevice.device != nullptr)
+    {
+        vkDestroyDevice(logicalDevice.device, nullptr);
+        logicalDevice.device = nullptr;
+    }
+}
+
+
+bool VulkanPhysicalDevice::checkSurfaceSupport(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const
+{
+    VkBool32 support = VK_FALSE;
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, queueFamilyIndex, surface, &support);
+    return support == VK_TRUE;
+}
+
 VulkanSwapchainSupport VulkanPhysicalDevice::checkSwapchainSupport(VkSurfaceKHR surface) const
 {
     VulkanSwapchainSupport support;
     support.surface = surface;
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &support.capabiliteis);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &support.capabilities);
 
     uint32_t formatCount = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);

@@ -32,25 +32,29 @@ int main(int argc, char** argv) {
             args.extensions.push_back(glfwExtensions[i]);
         }
 
-        const auto& layers = VulkanApp::enumerateLayers();
-        std::cout << std::endl << "layers count: " << layers.size() << std::endl;
-        std::cout << hr;
-        for (auto& l : layers) {
-            std::cout << tab(1) << l.layerName;
-            if (_DEBUG && strstr(l.layerName, "validation")) {
-                args.layers.push_back(l.layerName);
-                std::cout << "  USED";
-            }
-            std::cout << std::endl;
-        }
-
         const auto& extensions = VulkanApp::enumerateExtensions();
-        std::cout << std::endl << "extensions count: " << extensions.size() << std::endl;
+        std::cout << std::endl << "instance extensions count: " << extensions.size() << std::endl;
         std::cout << hr;
         for (auto& e : extensions) {
             std::cout << tab(1) << e.extensionName;
             if (_DEBUG && strstr(e.extensionName, "debug")) {
                 args.extensions.push_back(e.extensionName);
+                std::cout << "  USED";
+            }
+            if (strstr(e.extensionName, "swapchain")) {
+                args.extensions.push_back(e.extensionName);
+                std::cout << "  USED";
+            }
+            std::cout << std::endl;
+        }
+
+        const auto& layers = VulkanApp::enumerateLayers();
+        std::cout << std::endl << "instance layers count: " << layers.size() << std::endl;
+        std::cout << hr;
+        for (auto& l : layers) {
+            std::cout << tab(1) << l.layerName;
+            if (_DEBUG && strstr(l.layerName, "validation")) {
+                args.layers.push_back(l.layerName);
                 std::cout << "  USED";
             }
             std::cout << std::endl;
@@ -77,26 +81,116 @@ int main(int argc, char** argv) {
                 if (flags & VK_QUEUE_SPARSE_BINDING_BIT) std::cout << " SPARSE";
                 if (flags & VK_QUEUE_PROTECTED_BIT)std::cout << " PROTECTED";
                 std::cout << std::endl;
-
             }
         }
 
-        const auto& physicalDevice = devices.at(0);
+        auto& physicalDevice = devices.at(0);
 
-        VulkanLogicalDeviceInitArgs logicalDeviceInitArgs;
-        logicalDeviceInitArgs.queueFamilyIndex = 0;
-        const auto& logicalDevice = physicalDevice.createLogicalDevice(logicalDeviceInitArgs);
-        
         VkSurfaceKHR surface;
         if (glfwCreateWindowSurface(app.instance, window, nullptr, &surface) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create window surface!");
         }
 
+        uint32_t graphicsQueueFamilyIndex = -1;
+        uint32_t presentQueueFamilyIndex = -1;
+        for (auto& qf : physicalDevice.queueFamilies) {
+            for (size_t i = 0; i < physicalDevice.queueFamilies.size(); i++) {
+                const auto& qf = physicalDevice.queueFamilies.at(i);
+                if (graphicsQueueFamilyIndex == -1 && qf.queueFlags & VK_QUEUE_GRAPHICS_BIT != 0)
+                    graphicsQueueFamilyIndex = i;
+                if (presentQueueFamilyIndex == -1 && physicalDevice.checkSurfaceSupport(surface, i))
+                    presentQueueFamilyIndex = i;
+                if (graphicsQueueFamilyIndex != -1 && presentQueueFamilyIndex != -1) {
+                    break;
+                }
+            }
+        }
+        std::cout << hr << std::endl;
+        std::cout << "Selected Graphics Queue Family: " << graphicsQueueFamilyIndex << std::endl;
+        std::cout << "Selected Present Queue Family: " << presentQueueFamilyIndex << std::endl;
+
+        auto deviceExtensions = physicalDevice.enumerateExtensions();
+        auto deviceLayers = physicalDevice.enumerateLayers();
+
+        VulkanLogicalDeviceInitArgs logicalDeviceInitArgs;
+        logicalDeviceInitArgs.queueFamilyIndex = graphicsQueueFamilyIndex;
+        std::cout << std::endl << "device extensions count: " << deviceExtensions.size() << std::endl;
+        std::cout << hr;
+        for (auto& e : deviceExtensions)
+        {
+            std::cout << tab(1) << e.extensionName;
+            if (_DEBUG && strstr(e.extensionName, "debug")) {
+                logicalDeviceInitArgs.extensions.push_back(e.extensionName);
+                std::cout << "  USED";
+            }
+            if (strstr(e.extensionName, "swapchain")) {
+                logicalDeviceInitArgs.extensions.push_back(e.extensionName);
+                std::cout << "  USED";
+            }
+            std::cout << std::endl;
+        }
+        
+        std::cout << std::endl << "device layers count: " << deviceLayers.size() << std::endl;
+        std::cout << hr;
+        for (auto& l : deviceLayers)
+        {
+            std::cout << tab(1) << l.layerName;
+            if (_DEBUG && strstr(l.layerName, "validation")) {
+                logicalDeviceInitArgs.layers.push_back(l.layerName);
+                std::cout << "  USED";
+            }
+            std::cout << std::endl;
+        }
+        std::cout<< std::endl;
+
+        auto logicalDevice = physicalDevice.createLogicalDevice(logicalDeviceInitArgs);
+        std::cout << "LogicalDevice created: " << (size_t)logicalDevice.device << std::endl;
+
         const auto& swapchainSupport = physicalDevice.checkSwapchainSupport(surface);
+        const VkSurfaceFormatKHR* format = &swapchainSupport.formats[0];
+        for (auto& f : swapchainSupport.formats) {
+            if (f.format == VK_FORMAT_B8G8R8A8_SRGB && f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                format = &f;
+                break;
+            }
+        }
+        VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        for (auto& p : swapchainSupport.presentModes) {
+            if (p == VK_PRESENT_MODE_MAILBOX_KHR) {
+                presentMode = p;
+                break;
+            }
+        }
+        VkExtent2D extent = swapchainSupport.capabilities.currentExtent;
+        extent.width = std::clamp(extent.width,
+            swapchainSupport.capabilities.minImageExtent.width,
+            swapchainSupport.capabilities.maxImageExtent.width
+        );
+        extent.height = std::clamp(extent.height,
+            swapchainSupport.capabilities.minImageExtent.height,
+            swapchainSupport.capabilities.maxImageExtent.height
+        );
+
+        VulkanSwapchainArgs swapchainArgs;
+        swapchainArgs.surface = surface;
+        swapchainArgs.minImageCount = swapchainSupport.capabilities.minImageCount + 1;
+        swapchainArgs.extent = extent;
+        swapchainArgs.format = *format;
+        swapchainArgs.presentMode = presentMode;
+        swapchainArgs.queueFamilyIndices = {
+            graphicsQueueFamilyIndex,
+            presentQueueFamilyIndex
+        };
+        swapchainArgs.preTransform = swapchainSupport.capabilities.currentTransform;
+        VulkanSwapchain swapchain = logicalDevice.createSwapchain(swapchainArgs);
 
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
         }
+
+        physicalDevice.destroyLogicalDevice(logicalDevice);
+
+        vkDestroySurfaceKHR(app.instance, surface, nullptr);
 
         glfwDestroyWindow(window);
         glfwTerminate();

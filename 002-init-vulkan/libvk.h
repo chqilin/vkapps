@@ -39,7 +39,8 @@ struct VulkanLogicalDeviceInitArgs
 struct VulkanSwapchainSupport
 {
     VkSurfaceKHR surface;
-    VkSurfaceCapabilitiesKHR capabiliteis;
+    bool support;
+    VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
@@ -67,6 +68,7 @@ struct VulkanSwapchain
     VkFormat format;
     VkExtent2D extent;
     std::vector<VkImage> images;
+    std::vector<VkImageView> imageViews;
 };
 
 struct VulkanLogicalDevice
@@ -74,8 +76,8 @@ struct VulkanLogicalDevice
     VkDevice device;
     VkQueue queue;
 
-    VulkanSwapchain createSwapchain(const VulkanSwapchainArgs& args);
-    void destroySwapchain(const VulkanSwapchain& swapchain);
+    VulkanSwapchain createSwapchain(const VulkanSwapchainArgs& args) const;
+    void destroySwapchain(const VulkanSwapchain& swapchain) const;
 };
 
 struct VulkanPhysicalDevice
@@ -90,6 +92,8 @@ struct VulkanPhysicalDevice
     std::vector<VkExtensionProperties> enumerateExtensions() const;
     std::vector<VkLayerProperties> enumerateLayers() const;
     VulkanLogicalDevice createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const;
+    void destroyLogicalDevice(VulkanLogicalDevice& logicalDevice) const;
+    bool checkSurfaceSupport(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const;
     VulkanSwapchainSupport checkSwapchainSupport(VkSurfaceKHR surface) const;
 };
 
