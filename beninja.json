@@ -65,7 +65,9 @@
         ],
 
         "copies": [
-            "${glfwsdk}/lib-universal/libglfw.3.dylib"
+            "${glfwsdk}/lib-universal/libglfw.3.dylib",
+            "./shaders/shader.vert.spv",
+            "./shaders/shader.frag.spv"
         ],
 
         "runtimes": [
