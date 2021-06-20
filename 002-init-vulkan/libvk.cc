@@ -163,14 +163,170 @@ VulkanGraphicsPipeline VulkanLogicalDevice::createGraphicsPipeline(const VulkanG
         vsci, fsci
     };
 
+    VkPipelineVertexInputStateCreateInfo visci = {};
+    visci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    visci.pNext = nullptr;
+    visci.vertexBindingDescriptionCount = 0;
+    visci.pVertexBindingDescriptions = nullptr;
+    visci.vertexAttributeDescriptionCount = 0;
+    visci.pVertexAttributeDescriptions = nullptr;
+
+    VkPipelineInputAssemblyStateCreateInfo iasci = {};
+    iasci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    iasci.pNext = nullptr;
+    iasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    iasci.primitiveRestartEnable = VK_FALSE;
+
+    VkPipelineViewportStateCreateInfo vpsci = {};
+    vpsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vpsci.pNext = nullptr;
+    vpsci.viewportCount = 1;
+    vpsci.pViewports = &args.viewport;
+    vpsci.scissorCount = 1;
+    vpsci.pScissors = &args.scissor;
+
+    VkPipelineRasterizationStateCreateInfo rssci = {};
+    rssci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rssci.pNext = nullptr;
+    rssci.depthClampEnable = VK_FALSE;
+    rssci.rasterizerDiscardEnable = VK_FALSE;
+    rssci.polygonMode = VK_POLYGON_MODE_FILL;
+    rssci.lineWidth = 1.0f;
+    rssci.cullMode = VK_CULL_MODE_BACK_BIT;
+    rssci.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rssci.depthBiasEnable = VK_FALSE;
+    rssci.depthBiasConstantFactor = 0.0f;
+    rssci.depthBiasClamp = 0.0f;
+    rssci.depthBiasSlopeFactor = 0.0f;
+
+    VkPipelineMultisampleStateCreateInfo mssci = {};
+    mssci.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    mssci.pNext = nullptr;
+    mssci.sampleShadingEnable = VK_FALSE;
+    mssci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    mssci.minSampleShading = 1.0f;
+    mssci.pSampleMask = nullptr;
+    mssci.alphaToCoverageEnable = VK_FALSE;
+    mssci.alphaToOneEnable = VK_FALSE;
+
+    VkPipelineColorBlendAttachmentState cbas = {};
+    cbas.colorWriteMask =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    cbas.blendEnable = VK_FALSE;
+    cbas.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    cbas.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+    cbas.colorBlendOp = VK_BLEND_OP_ADD;
+    cbas.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    cbas.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    cbas.alphaBlendOp = VK_BLEND_OP_ADD;
+
+    VkPipelineColorBlendStateCreateInfo cbsci = {};
+    cbsci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    cbsci.pNext = nullptr;
+    cbsci.logicOpEnable = VK_FALSE;
+    cbsci.logicOp = VK_LOGIC_OP_COPY;
+    cbsci.attachmentCount = 1;
+    cbsci.pAttachments = &cbas;
+    cbsci.blendConstants[0] = 0.0f; // Optional
+    cbsci.blendConstants[1] = 0.0f; // Optional
+    cbsci.blendConstants[2] = 0.0f; // Optional
+    cbsci.blendConstants[3] = 0.0f; // Optional
+
+    VkDynamicState dynamicStates[] = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_LINE_WIDTH
+    };
+    VkPipelineDynamicStateCreateInfo dsci = {};
+    dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dsci.pNext = nullptr;
+    dsci.dynamicStateCount = 2;
+    dsci.pDynamicStates = dynamicStates;
+
     VulkanGraphicsPipeline pipeline = {};
     pipeline.vert = vert;
     pipeline.frag = frag;
+
+    VkPipelineLayoutCreateInfo lci = {};
+    lci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    lci.pNext = nullptr;
+    lci.setLayoutCount = 0;
+    lci.pSetLayouts = nullptr;
+    lci.pushConstantRangeCount = 0;
+    lci.pPushConstantRanges = 0;
+    if (VK_SUCCESS != vkCreatePipelineLayout(device, &lci, nullptr, &pipeline.layout))
+    {
+        this->destroyGraphicsPipeline(pipeline);
+        throw std::runtime_error("Create pipeline layout failed.");
+    }
+
+    VkAttachmentDescription attachment = {};
+    attachment.format = args.colorFormat;
+    attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentRef = {};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+
+    VkRenderPassCreateInfo rpci = {};
+    rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    rpci.pNext = nullptr;
+    rpci.attachmentCount = 1;
+    rpci.pAttachments = &attachment;
+    rpci.subpassCount = 1;
+    rpci.pSubpasses = &subpass;
+    if (VK_SUCCESS != vkCreateRenderPass(device, &rpci, nullptr, &pipeline.renderPass))
+    {
+        this->destroyGraphicsPipeline(pipeline);
+        throw std::runtime_error("Create render-pass failed.");
+    }
+
+    VkGraphicsPipelineCreateInfo gpci = {};
+    gpci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    gpci.pNext = nullptr;
+    gpci.stageCount = 2;
+    gpci.pStages = shaderStages;
+    gpci.pVertexInputState = &visci;
+    gpci.pInputAssemblyState = &iasci;
+    gpci.pViewportState = &vpsci;
+    gpci.pRasterizationState = &rssci;
+    gpci.pMultisampleState = &mssci;
+    gpci.pDepthStencilState = nullptr;
+    gpci.pColorBlendState = &cbsci;
+    gpci.pDynamicState = &dsci;
+    gpci.layout = pipeline.layout;
+    gpci.renderPass = pipeline.renderPass;
+    gpci.subpass = 0;
+    gpci.basePipelineHandle = VK_NULL_HANDLE;
+    gpci.basePipelineIndex = -1;
+
+    if(VK_SUCCESS != vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &gpci, nullptr, &pipeline.handle))
+    {
+        this->destroyGraphicsPipeline(pipeline);
+        throw std::runtime_error("Create graphics pipeline failed.");
+    }
+
     return pipeline;
 }
 
 void VulkanLogicalDevice::destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeline) const
 {
+    if (pipeline.layout != nullptr)
+    {
+        vkDestroyPipelineLayout(device, pipeline.layout, nullptr);
+        pipeline.layout = nullptr;
+    }
     if (pipeline.vert != nullptr)
     {
         this->destroyShaderModule(pipeline.vert);
@@ -180,6 +336,11 @@ void VulkanLogicalDevice::destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeli
     {
         this->destroyShaderModule(pipeline.frag);
         pipeline.frag = nullptr;
+    }
+    if(pipeline.handle != nullptr)
+    {
+        vkDestroyPipeline(device, pipeline.handle, nullptr);
+        pipeline.handle = nullptr;
     }
 }
 

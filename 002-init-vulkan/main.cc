@@ -204,7 +204,18 @@ int main(int argc, char** argv) {
         VulkanGraphicsPipelineArgs pipelineArgs = {};
         pipelineArgs.vert = readFile("./shader.vert.spv");
         pipelineArgs.frag = readFile("./shader.frag.spv");
+        pipelineArgs.viewport = {
+            0, 0,
+            _WINDOW_WIDTH, _WINDOW_HEIGHT,
+            0.0f, 1.0f
+        };
+        pipelineArgs.scissor = {
+            {0, 0},
+            {_WINDOW_WIDTH, _WINDOW_HEIGHT}
+        };
+        pipelineArgs.colorFormat = swapchain.format;
         auto pipeline = logicalDevice.createGraphicsPipeline(pipelineArgs);
+        std::cout << "GraphicsPipeline created: " << (size_t)pipeline.handle << std::endl;
 
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();

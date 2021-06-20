@@ -75,12 +75,18 @@ struct VulkanGraphicsPipelineArgs
 {
     std::vector<char> vert;
     std::vector<char> frag;
+    VkViewport viewport;
+    VkRect2D scissor;
+    VkFormat colorFormat;
 };
 
 struct VulkanGraphicsPipeline
 {
+    VkPipeline handle;
     VkShaderModule vert;
     VkShaderModule frag;
+    VkPipelineLayout layout;
+    VkRenderPass renderPass;
 };
 
 struct VulkanLogicalDevice
