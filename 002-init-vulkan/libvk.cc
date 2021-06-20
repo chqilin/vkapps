@@ -310,14 +310,58 @@ VulkanGraphicsPipeline VulkanLogicalDevice::createGraphicsPipeline(const VulkanG
     gpci.subpass = 0;
     gpci.basePipelineHandle = VK_NULL_HANDLE;
     gpci.basePipelineIndex = -1;
-
-    if(VK_SUCCESS != vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &gpci, nullptr, &pipeline.handle))
+    if (VK_SUCCESS != vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &gpci, nullptr, &pipeline.handle))
     {
         this->destroyGraphicsPipeline(pipeline);
         throw std::runtime_error("Create graphics pipeline failed.");
     }
 
     return pipeline;
+}
+
+VulkanFrameBufferObject VulkanLogicalDevice::createFrameBufferObject(const VulkanFrameBufferArgs& args) const
+{
+    VulkanFrameBufferObject fbo;
+    fbo.handles.resize(args.imageViews.size());
+
+    for (size_t i = 0; i < args.imageViews.size(); i++)
+    {
+        auto& imageView = args.imageViews.at(i);
+        VkImageView attachments[] = { imageView };
+
+        VkFramebufferCreateInfo fbci = {};
+        fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fbci.pNext = nullptr;
+        fbci.renderPass = args.renderPass;
+        fbci.attachmentCount = 1;
+        fbci.pAttachments = attachments;
+        fbci.width = args.width;
+        fbci.height = args.height;
+        fbci.layers = 1;
+
+        VkFramebuffer handle;
+        if(VK_SUCCESS != vkCreateFramebuffer(device, &fbci, nullptr, &handle))
+        {
+            this->destroyFrameBufferObject(fbo);
+            throw std::runtime_error("Create framebuffer failed.");
+        }
+
+        fbo.handles[i] = handle;
+    }
+
+    return fbo;
+}
+
+void VulkanLogicalDevice::destroyFrameBufferObject(VulkanFrameBufferObject& fbo) const
+{
+    for(size_t i = 0; i < fbo.handles.size(); i++)
+    {
+        VkFramebuffer handle = fbo.handles.at(i);
+        if(handle == VK_NULL_HANDLE)
+            continue;
+        vkDestroyFramebuffer(device, handle, nullptr);
+        fbo.handles[i] = VK_NULL_HANDLE;
+    }
 }
 
 void VulkanLogicalDevice::destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeline) const
@@ -337,7 +381,7 @@ void VulkanLogicalDevice::destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeli
         this->destroyShaderModule(pipeline.frag);
         pipeline.frag = nullptr;
     }
-    if(pipeline.handle != nullptr)
+    if (pipeline.handle != nullptr)
     {
         vkDestroyPipeline(device, pipeline.handle, nullptr);
         pipeline.handle = nullptr;

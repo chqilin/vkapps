@@ -89,6 +89,19 @@ struct VulkanGraphicsPipeline
     VkRenderPass renderPass;
 };
 
+struct VulkanFrameBufferArgs
+{
+    VkRenderPass renderPass;
+    std::vector<VkImageView> imageViews;
+    uint32_t width;
+    uint32_t height;
+};
+
+struct VulkanFrameBufferObject
+{
+    std::vector<VkFramebuffer> handles;
+};
+
 struct VulkanLogicalDevice
 {
     VkDevice device;
@@ -102,6 +115,9 @@ struct VulkanLogicalDevice
 
     VulkanGraphicsPipeline createGraphicsPipeline(const VulkanGraphicsPipelineArgs& args) const;
     void destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeline) const;
+
+    VulkanFrameBufferObject createFrameBufferObject(const VulkanFrameBufferArgs& args) const;
+    void destroyFrameBufferObject(VulkanFrameBufferObject& fbo) const;
 };
 
 struct VulkanPhysicalDevice

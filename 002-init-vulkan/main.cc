@@ -217,16 +217,22 @@ int main(int argc, char** argv) {
         auto pipeline = logicalDevice.createGraphicsPipeline(pipelineArgs);
         std::cout << "GraphicsPipeline created: " << (size_t)pipeline.handle << std::endl;
 
+        VulkanFrameBufferObject fbo = logicalDevice.createFrameBufferObject({
+            renderPass: pipeline.renderPass,
+            imageViews: swapchain.imageViews,
+            width: (uint32_t)pipelineArgs.viewport.width,
+            height: (uint32_t)pipelineArgs.viewport.height
+        });
+
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
         }
 
+        logicalDevice.destroyFrameBufferObject(fbo);
         logicalDevice.destroyGraphicsPipeline(pipeline);
         logicalDevice.destroySwapchain(swapchain);
         physicalDevice.destroyLogicalDevice(logicalDevice);
-
         vkDestroySurfaceKHR(app.instance, surface, nullptr);
-
         glfwDestroyWindow(window);
         glfwTerminate();
         return 0;
