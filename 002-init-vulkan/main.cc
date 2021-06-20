@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
         const char** glfwExtensions;
         glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-        VulkanAppInitArgs args = {};
+        VulkanAppArgs args = {};
         args.appName = _WINDOW_TITLE;
         args.appVersion = 1;
         for (uint32_t i = 0; i < glfwExtensionCount; i++) {
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
         auto deviceExtensions = physicalDevice.enumerateExtensions();
         auto deviceLayers = physicalDevice.enumerateLayers();
 
-        VulkanLogicalDeviceInitArgs logicalDeviceInitArgs;
+        VulkanLogicalDeviceArgs logicalDeviceInitArgs;
         logicalDeviceInitArgs.queueFamilyIndex = graphicsQueueFamilyIndex;
         std::cout << std::endl << "device extensions count: " << deviceExtensions.size() << std::endl;
         std::cout << hr;
@@ -218,10 +218,10 @@ int main(int argc, char** argv) {
         std::cout << "GraphicsPipeline created: " << (size_t)pipeline.handle << std::endl;
 
         VulkanFrameBufferObject fbo = logicalDevice.createFrameBufferObject({
-            renderPass: pipeline.renderPass,
-            imageViews: swapchain.imageViews,
-            width: (uint32_t)pipelineArgs.viewport.width,
-            height: (uint32_t)pipelineArgs.viewport.height
+            pipeline.renderPass,
+            swapchain.imageViews,
+            (uint32_t)pipelineArgs.viewport.width,
+            (uint32_t)pipelineArgs.viewport.height
         });
 
         while (!glfwWindowShouldClose(window)) {

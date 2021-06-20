@@ -29,13 +29,6 @@ struct VulkanExtensionFactory
     }
 };
 
-struct VulkanLogicalDeviceInitArgs
-{
-    uint32_t queueFamilyIndex;
-    std::vector<const char*> extensions;
-    std::vector<const char*> layers;
-};
-
 struct VulkanSwapchainSupport
 {
     VkSurfaceKHR surface;
@@ -102,10 +95,18 @@ struct VulkanFrameBufferObject
     std::vector<VkFramebuffer> handles;
 };
 
+struct VulkanLogicalDeviceArgs
+{
+    uint32_t queueFamilyIndex;
+    std::vector<const char*> extensions;
+    std::vector<const char*> layers;
+};
+
 struct VulkanLogicalDevice
 {
     VkDevice device;
     VkQueue queue;
+    VkCommandPool commandPool;
 
     VulkanSwapchain createSwapchain(const VulkanSwapchainArgs& args) const;
     void destroySwapchain(VulkanSwapchain& swapchain) const;
@@ -131,13 +132,13 @@ struct VulkanPhysicalDevice
 
     std::vector<VkExtensionProperties> enumerateExtensions() const;
     std::vector<VkLayerProperties> enumerateLayers() const;
-    VulkanLogicalDevice createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const;
+    VulkanLogicalDevice createLogicalDevice(const VulkanLogicalDeviceArgs& args) const;
     void destroyLogicalDevice(VulkanLogicalDevice& logicalDevice) const;
     bool checkSurfaceSupport(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const;
     VulkanSwapchainSupport checkSwapchainSupport(VkSurfaceKHR surface) const;
 };
 
-struct VulkanAppInitArgs
+struct VulkanAppArgs
 {
     const char* appName;
     uint32_t appVersion;
@@ -154,7 +155,7 @@ public:
 public:
     VulkanApp();
     virtual ~VulkanApp();
-    void init(const VulkanAppInitArgs& args);
+    void init(const VulkanAppArgs& args);
     void quit();
 
     std::vector<VulkanPhysicalDevice> enumeratePhysicalDevices();

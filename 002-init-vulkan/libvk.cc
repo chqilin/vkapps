@@ -406,7 +406,7 @@ std::vector<VkLayerProperties> VulkanPhysicalDevice::enumerateLayers() const
     return list;
 }
 
-VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogicalDeviceInitArgs& args) const
+VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogicalDeviceArgs& args) const
 {
     float queuePriority = 1.0f;
 
@@ -441,15 +441,33 @@ VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogica
     VkQueue queue = nullptr;
     vkGetDeviceQueue(logicalDevice, args.queueFamilyIndex, 0, &queue);
 
+    VkCommandPoolCreateInfo cpci = {};
+    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cpci.pNext = nullptr;
+    cpci.queueFamilyIndex = args.queueFamilyIndex;
+    cpci.flags = 0;
+
+    VkCommandPool commandPool;
+    if(VK_SUCCESS != vkCreateCommandPool(logicalDevice, &cpci, nullptr, &commandPool))
+    {
+        throw std::runtime_error("Create command-pool failed.");
+    }
+
     VulkanLogicalDevice ret = {};
     ret.device = logicalDevice;
     ret.queue = queue;
+    ret.commandPool = commandPool;
 
     return ret;
 }
 
 void VulkanPhysicalDevice::destroyLogicalDevice(VulkanLogicalDevice& logicalDevice) const
 {
+    if(logicalDevice.commandPool != nullptr)
+    {
+        vkDestroyCommandPool(logicalDevice.device, logicalDevice.commandPool, nullptr);
+        logicalDevice.commandPool = nullptr;
+    }
     if (logicalDevice.device != nullptr)
     {
         vkDestroyDevice(logicalDevice.device, nullptr);
@@ -514,7 +532,7 @@ VulkanApp::~VulkanApp()
     this->quit();
 }
 
-void VulkanApp::init(const VulkanAppInitArgs& args)
+void VulkanApp::init(const VulkanAppArgs& args)
 {
     VkResult ret = VK_SUCCESS;
 
