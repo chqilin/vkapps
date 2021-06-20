@@ -78,6 +78,8 @@ struct VulkanGraphicsPipeline
     VkPipeline handle;
     VkShaderModule vert;
     VkShaderModule frag;
+    VkViewport viewport;
+    VkRect2D scissor;
     VkPipelineLayout layout;
     VkRenderPass renderPass;
 };
@@ -119,6 +121,10 @@ struct VulkanLogicalDevice
 
     VulkanFrameBufferObject createFrameBufferObject(const VulkanFrameBufferArgs& args) const;
     void destroyFrameBufferObject(VulkanFrameBufferObject& fbo) const;
+
+    std::vector<VkCommandBuffer> beginCommandBuffers(VulkanGraphicsPipeline& pipeline, VulkanFrameBufferObject& fbo) const;
+    void endCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const;
+    void present() const;
 };
 
 struct VulkanPhysicalDevice

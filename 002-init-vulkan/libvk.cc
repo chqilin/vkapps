@@ -246,6 +246,8 @@ VulkanGraphicsPipeline VulkanLogicalDevice::createGraphicsPipeline(const VulkanG
     VulkanGraphicsPipeline pipeline = {};
     pipeline.vert = vert;
     pipeline.frag = frag;
+    pipeline.viewport = args.viewport;
+    pipeline.scissor = args.scissor;
 
     VkPipelineLayoutCreateInfo lci = {};
     lci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -340,7 +342,7 @@ VulkanFrameBufferObject VulkanLogicalDevice::createFrameBufferObject(const Vulka
         fbci.layers = 1;
 
         VkFramebuffer handle;
-        if(VK_SUCCESS != vkCreateFramebuffer(device, &fbci, nullptr, &handle))
+        if (VK_SUCCESS != vkCreateFramebuffer(device, &fbci, nullptr, &handle))
         {
             this->destroyFrameBufferObject(fbo);
             throw std::runtime_error("Create framebuffer failed.");
@@ -354,15 +356,80 @@ VulkanFrameBufferObject VulkanLogicalDevice::createFrameBufferObject(const Vulka
 
 void VulkanLogicalDevice::destroyFrameBufferObject(VulkanFrameBufferObject& fbo) const
 {
-    for(size_t i = 0; i < fbo.handles.size(); i++)
+    for (size_t i = 0; i < fbo.handles.size(); i++)
     {
         VkFramebuffer handle = fbo.handles.at(i);
-        if(handle == VK_NULL_HANDLE)
+        if (handle == VK_NULL_HANDLE)
             continue;
         vkDestroyFramebuffer(device, handle, nullptr);
         fbo.handles[i] = VK_NULL_HANDLE;
     }
 }
+
+std::vector<VkCommandBuffer> VulkanLogicalDevice::beginCommandBuffers(
+    VulkanGraphicsPipeline& pipeline,
+    VulkanFrameBufferObject& fbo) const
+{
+    std::vector<VkCommandBuffer> commandBuffers(fbo.handles.size());
+
+    VkCommandBufferAllocateInfo cbai = {};
+    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbai.pNext = nullptr;
+    cbai.commandPool = this->commandPool;
+    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cbai.commandBufferCount = (uint32_t)commandBuffers.size();
+    if (VK_SUCCESS != vkAllocateCommandBuffers(device, &cbai, commandBuffers.data()))
+    {
+        throw std::runtime_error("Allocate command-buffers failed.");
+    }
+
+    for (uint32_t i = 0; i < commandBuffers.size(); i++)
+    {
+        VkCommandBufferBeginInfo cbbi = {};
+        cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cbbi.pNext = nullptr;
+        cbbi.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        cbbi.pInheritanceInfo = nullptr;
+        if (VK_SUCCESS != vkBeginCommandBuffer(commandBuffers[i], &cbbi))
+        {
+            throw std::runtime_error("Begin command-buffer failed.");
+        }
+
+        VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        VkRenderPassBeginInfo rpbi = {};
+        rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rpbi.renderPass = pipeline.renderPass;
+        rpbi.framebuffer = fbo.handles[i];
+        rpbi.renderArea.offset = { 0, 0 };
+        rpbi.renderArea.extent = {
+            (uint32_t)pipeline.viewport.width,
+            (uint32_t)pipeline.viewport.height
+        };
+        rpbi.clearValueCount = 1;
+        rpbi.pClearValues = &clearColor;
+        vkCmdBeginRenderPass(commandBuffers[i], &rpbi, VK_SUBPASS_CONTENTS_INLINE);
+
+        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle);
+
+        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+    }
+
+    return commandBuffers;
+}
+
+void VulkanLogicalDevice::endCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const
+{
+    for (size_t i = 0; i < commandBuffers.size(); i++)
+    {
+        vkCmdEndRenderPass(commandBuffers[i]);
+        if (VK_SUCCESS != vkEndCommandBuffer(commandBuffers[i])) {
+            throw std::runtime_error("End command-buffer failed.");
+        }
+    }
+}
+
+void VulkanLogicalDevice::present() const
+{}
 
 void VulkanLogicalDevice::destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeline) const
 {
@@ -448,7 +515,7 @@ VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogica
     cpci.flags = 0;
 
     VkCommandPool commandPool;
-    if(VK_SUCCESS != vkCreateCommandPool(logicalDevice, &cpci, nullptr, &commandPool))
+    if (VK_SUCCESS != vkCreateCommandPool(logicalDevice, &cpci, nullptr, &commandPool))
     {
         throw std::runtime_error("Create command-pool failed.");
     }
@@ -463,7 +530,7 @@ VulkanLogicalDevice VulkanPhysicalDevice::createLogicalDevice(const VulkanLogica
 
 void VulkanPhysicalDevice::destroyLogicalDevice(VulkanLogicalDevice& logicalDevice) const
 {
-    if(logicalDevice.commandPool != nullptr)
+    if (logicalDevice.commandPool != nullptr)
     {
         vkDestroyCommandPool(logicalDevice.device, logicalDevice.commandPool, nullptr);
         logicalDevice.commandPool = nullptr;
