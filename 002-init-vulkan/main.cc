@@ -206,12 +206,12 @@ int main(int argc, char** argv) {
         pipelineArgs.frag = readFile("./shader.frag.spv");
         pipelineArgs.viewport = {
             0, 0,
-            _WINDOW_WIDTH, _WINDOW_HEIGHT,
+            (float)extent.width, (float)extent.height,
             0.0f, 1.0f
         };
         pipelineArgs.scissor = {
             {0, 0},
-            {_WINDOW_WIDTH, _WINDOW_HEIGHT}
+            extent
         };
         pipelineArgs.colorFormat = swapchain.format;
         auto pipeline = logicalDevice.createGraphicsPipeline(pipelineArgs);
@@ -220,13 +220,25 @@ int main(int argc, char** argv) {
         VulkanFrameBufferObject fbo = logicalDevice.createFrameBufferObject({
             pipeline.renderPass,
             swapchain.imageViews,
-            (uint32_t)pipelineArgs.viewport.width,
-            (uint32_t)pipelineArgs.viewport.height
+            extent.width,
+            extent.height
         });
 
+        auto commandBuffers = logicalDevice.beginCommandBuffers(pipeline, fbo);
+        logicalDevice.endCommandBuffers(commandBuffers);
+
+        VulkanPresentArgs presentArgs;
+        presentArgs.swapchain = swapchain.handle;
+        presentArgs.commandBuffers = commandBuffers;
+        presentArgs.onImageAvailable = logicalDevice.createSemaphore();
+        presentArgs.onRenderFinished = logicalDevice.createSemaphore();
+
         while (!glfwWindowShouldClose(window)) {
+            logicalDevice.present(presentArgs);
             glfwPollEvents();
         }
+
+
 
         logicalDevice.destroyFrameBufferObject(fbo);
         logicalDevice.destroyGraphicsPipeline(pipeline);

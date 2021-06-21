@@ -104,6 +104,14 @@ struct VulkanLogicalDeviceArgs
     std::vector<const char*> layers;
 };
 
+struct VulkanPresentArgs
+{
+    VkSwapchainKHR swapchain;
+    std::vector<VkCommandBuffer> commandBuffers;
+    VkSemaphore onImageAvailable;
+    VkSemaphore onRenderFinished;
+};
+
 struct VulkanLogicalDevice
 {
     VkDevice device;
@@ -122,9 +130,12 @@ struct VulkanLogicalDevice
     VulkanFrameBufferObject createFrameBufferObject(const VulkanFrameBufferArgs& args) const;
     void destroyFrameBufferObject(VulkanFrameBufferObject& fbo) const;
 
+    VkSemaphore createSemaphore() const;
+    void destroySemaphore(VkSemaphore& semaphore) const;
+
     std::vector<VkCommandBuffer> beginCommandBuffers(VulkanGraphicsPipeline& pipeline, VulkanFrameBufferObject& fbo) const;
     void endCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const;
-    void present() const;
+    void present(const VulkanPresentArgs& args) const;
 };
 
 struct VulkanPhysicalDevice

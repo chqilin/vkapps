@@ -366,6 +366,29 @@ void VulkanLogicalDevice::destroyFrameBufferObject(VulkanFrameBufferObject& fbo)
     }
 }
 
+VkSemaphore VulkanLogicalDevice::createSemaphore() const
+{
+    VkSemaphoreCreateInfo sci = {};
+    sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    sci.pNext = nullptr;
+
+    VkSemaphore semaphore;
+    if(vkCreateSemaphore(device, &sci, nullptr, &semaphore) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Create semaphore failed.");
+    }
+
+    return semaphore;
+}
+
+void VulkanLogicalDevice::destroySemaphore(VkSemaphore& semaphore) const
+{
+    if(semaphore != VK_NULL_HANDLE)
+    {
+        vkDestroySemaphore(device, semaphore, nullptr);
+    }
+}
+
 std::vector<VkCommandBuffer> VulkanLogicalDevice::beginCommandBuffers(
     VulkanGraphicsPipeline& pipeline,
     VulkanFrameBufferObject& fbo) const
@@ -411,7 +434,7 @@ std::vector<VkCommandBuffer> VulkanLogicalDevice::beginCommandBuffers(
 
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle);
 
-        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+        vkCmdDraw(commandBuffers[i], 6, 1, 0, 0);
     }
 
     return commandBuffers;
@@ -428,8 +451,48 @@ void VulkanLogicalDevice::endCommandBuffers(std::vector<VkCommandBuffer>& comman
     }
 }
 
-void VulkanLogicalDevice::present() const
-{}
+void VulkanLogicalDevice::present(const VulkanPresentArgs& args) const
+{
+    uint32_t imageIndex = -1;
+    vkAcquireNextImageKHR(
+        device, args.swapchain, 
+        std::numeric_limits<uint64_t>::max(), 
+        args.onImageAvailable, VK_NULL_HANDLE,
+        &imageIndex
+    );
+
+    VkPipelineStageFlags waitStageFlags = 
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = nullptr;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &args.onImageAvailable;
+    submitInfo.pWaitDstStageMask = &waitStageFlags;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &args.commandBuffers[imageIndex];
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &args.onRenderFinished;
+    if(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Submit failed.");
+    }
+
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.pNext = nullptr;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &args.onRenderFinished;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &args.swapchain;
+    presentInfo.pImageIndices = &imageIndex;
+    presentInfo.pResults = nullptr;
+    if(vkQueuePresentKHR(queue, &presentInfo) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Present failed.");
+    }
+}
 
 void VulkanLogicalDevice::destroyGraphicsPipeline(VulkanGraphicsPipeline& pipeline) const
 {
