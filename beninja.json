@@ -39,7 +39,7 @@
             "@executable_path"
         ]
     },{
-        "name":"002-init-vulkan",
+        "name":"002-vulkan",
         "type": "executable",
 
         "defines": [
@@ -61,7 +61,7 @@
         ],
 
         "sources": [
-            "./002-init-vulkan/**/**.cc"
+            "./002-vulkan/**/**.cc"
         ],
 
         "copies": [

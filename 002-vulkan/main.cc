@@ -1,55 +1,46 @@
 
 #include "header.h"
 #include "libvk.h"
+#include "utils.h"
 
 #include <GLFW/glfw3.h>
-#include <iostream>
-#include <fstream>
 
-static std::vector<char> readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open file!");
-    }
+class VulkanApp {
+    GLFWwindow* window = nullptr;
+    VulkanInstance instance;
+    VulkanPhysicalDevice physicalDevice;
+    VkSurfaceKHR surface = nullptr;
+    VulkanLogicalDevice logicalDevice;
+    VulkanSwapchain swapchain;
+    VulkanGraphicsPipeline pipeline;
+    VulkanFrameBufferObject frameBuffers;
+    std::vector<VkCommandBuffer> commandBuffers;
+    VkSemaphore onImageAvailable = nullptr;
+    VkSemaphore onRenderFinished = nullptr;
 
-    size_t size = (size_t)file.tellg();
-    std::vector<char> buffer(size);
-    file.seekg(0);
-    file.read(buffer.data(), size);
-
-    file.close();
-
-    return buffer;
-}
-
-const std::string hr = "------------------------------------------------------------\n";
-const std::string tab(int n) {
-    std::string str;
-    for (int i = 0; i < n; i++) {
-        str += "  ";
-    }
-    return str;
-}
-
-int main(int argc, char** argv) {
-    try {
+public:
+    void init()
+    {
         glfwInit();
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        GLFWwindow* window = glfwCreateWindow(_WINDOW_WIDTH, _WINDOW_HEIGHT, _WINDOW_TITLE, NULL, NULL);
+        this->window = glfwCreateWindow(_WINDOW_WIDTH, _WINDOW_HEIGHT, _WINDOW_TITLE, NULL, NULL);
+        
+        glfwSetWindowUserPointer(window, this);
+        glfwSetWindowSizeCallback(window, VulkanApp::onWindowResize);
 
         uint32_t glfwExtensionCount = 0;
         const char** glfwExtensions;
         glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-        VulkanAppArgs args = {};
+        VulkanInstanceArgs args = {};
         args.appName = _WINDOW_TITLE;
         args.appVersion = 1;
         for (uint32_t i = 0; i < glfwExtensionCount; i++) {
             args.extensions.push_back(glfwExtensions[i]);
         }
 
-        const auto& extensions = VulkanApp::enumerateExtensions();
+        const auto& extensions = VulkanInstance::enumerateExtensions();
         std::cout << std::endl << "instance extensions count: " << extensions.size() << std::endl;
         std::cout << hr;
         for (auto& e : extensions) {
@@ -65,7 +56,7 @@ int main(int argc, char** argv) {
             std::cout << std::endl;
         }
 
-        const auto& layers = VulkanApp::enumerateLayers();
+        const auto& layers = VulkanInstance::enumerateLayers();
         std::cout << std::endl << "instance layers count: " << layers.size() << std::endl;
         std::cout << hr;
         for (auto& l : layers) {
@@ -77,10 +68,9 @@ int main(int argc, char** argv) {
             std::cout << std::endl;
         }
 
-        VulkanApp app;
-        app.init(args);
+        this->instance = VulkanInstance::createInstance(args);
 
-        const auto& devices = app.enumeratePhysicalDevices();
+        const auto& devices = instance.enumeratePhysicalDevices();
         std::cout << std::endl << "physical devices count: " << devices.size() << std::endl;
         std::cout << hr;
         for (auto& dev : devices) {
@@ -100,28 +90,32 @@ int main(int argc, char** argv) {
                 std::cout << std::endl;
             }
         }
-
-        auto& physicalDevice = devices.at(0);
+        if (devices.empty())
+        {
+            throw std::runtime_error("Physical Devices not found.");
+        }
+        this->physicalDevice = devices.at(0);
 
         VkSurfaceKHR surface;
-        if (glfwCreateWindowSurface(app.instance, window, nullptr, &surface) != VK_SUCCESS) {
+        if (glfwCreateWindowSurface(instance.handle, window, nullptr, &surface) != VK_SUCCESS) 
+        {
             throw std::runtime_error("Failed to create window surface!");
         }
+        this->surface = surface;
 
         uint32_t graphicsQueueFamilyIndex = -1;
         uint32_t presentQueueFamilyIndex = -1;
-        for (auto& qf : physicalDevice.queueFamilies) {
-            for (size_t i = 0; i < physicalDevice.queueFamilies.size(); i++) {
-                const auto& qf = physicalDevice.queueFamilies.at(i);
-                if (graphicsQueueFamilyIndex == -1 && qf.queueFlags & VK_QUEUE_GRAPHICS_BIT != 0)
-                    graphicsQueueFamilyIndex = i;
-                if (presentQueueFamilyIndex == -1 && physicalDevice.checkSurfaceSupport(surface, i))
-                    presentQueueFamilyIndex = i;
-                if (graphicsQueueFamilyIndex != -1 && presentQueueFamilyIndex != -1) {
-                    break;
-                }
+        for (size_t i = 0; i < physicalDevice.queueFamilies.size(); i++) {
+            const auto& qf = physicalDevice.queueFamilies.at(i);
+            if (graphicsQueueFamilyIndex == -1 && (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0)
+                graphicsQueueFamilyIndex = i;
+            if (presentQueueFamilyIndex == -1 && physicalDevice.checkSurfaceSupport(surface, i))
+                presentQueueFamilyIndex = i;
+            if (graphicsQueueFamilyIndex != -1 && presentQueueFamilyIndex != -1) {
+                break;
             }
         }
+
         std::cout << hr << std::endl;
         std::cout << "Selected Graphics Queue Family: " << graphicsQueueFamilyIndex << std::endl;
         std::cout << "Selected Present Queue Family: " << presentQueueFamilyIndex << std::endl;
@@ -160,7 +154,7 @@ int main(int argc, char** argv) {
         }
         std::cout << std::endl;
 
-        auto logicalDevice = physicalDevice.createLogicalDevice(logicalDeviceInitArgs);
+        this->logicalDevice = physicalDevice.createLogicalDevice(logicalDeviceInitArgs);
         std::cout << "LogicalDevice created: " << (size_t)logicalDevice.device << std::endl;
 
         const auto& swapchainSupport = physicalDevice.checkSwapchainSupport(surface);
@@ -187,7 +181,6 @@ int main(int argc, char** argv) {
             swapchainSupport.capabilities.minImageExtent.height,
             swapchainSupport.capabilities.maxImageExtent.height
         );
-
         VulkanSwapchainArgs swapchainArgs;
         swapchainArgs.surface = surface;
         swapchainArgs.minImageCount = swapchainSupport.capabilities.minImageCount + 1;
@@ -199,7 +192,7 @@ int main(int argc, char** argv) {
             presentQueueFamilyIndex
         };
         swapchainArgs.preTransform = swapchainSupport.capabilities.currentTransform;
-        VulkanSwapchain swapchain = logicalDevice.createSwapchain(swapchainArgs);
+        this->swapchain = logicalDevice.createSwapchain(swapchainArgs);
 
         VulkanGraphicsPipelineArgs pipelineArgs = {};
         pipelineArgs.vert = readFile("./shader.vert.spv");
@@ -217,39 +210,76 @@ int main(int argc, char** argv) {
         auto pipeline = logicalDevice.createGraphicsPipeline(pipelineArgs);
         std::cout << "GraphicsPipeline created: " << (size_t)pipeline.handle << std::endl;
 
-        VulkanFrameBufferObject fbo = logicalDevice.createFrameBufferObject({
+        this->frameBuffers = logicalDevice.createFrameBufferObject({
             pipeline.renderPass,
             swapchain.imageViews,
             extent.width,
             extent.height
-        });
+            });
 
-        auto commandBuffers = logicalDevice.beginCommandBuffers(pipeline, fbo);
+        this->commandBuffers = logicalDevice.beginCommandBuffers(pipeline, frameBuffers);
         logicalDevice.endCommandBuffers(commandBuffers);
 
-        VulkanPresentArgs presentArgs;
-        presentArgs.swapchain = swapchain.handle;
-        presentArgs.commandBuffers = commandBuffers;
-        presentArgs.onImageAvailable = logicalDevice.createSemaphore();
-        presentArgs.onRenderFinished = logicalDevice.createSemaphore();
+        this->onImageAvailable = logicalDevice.createSemaphore();
+        this->onRenderFinished = logicalDevice.createSemaphore();
+    }
 
-        while (!glfwWindowShouldClose(window)) {
-            logicalDevice.present(presentArgs);
-            glfwPollEvents();
-        }
-
-
-
-        logicalDevice.destroyFrameBufferObject(fbo);
+    void quit()
+    {
+        logicalDevice.destroySemaphore(onRenderFinished);
+        logicalDevice.destroySemaphore(onImageAvailable);
+        logicalDevice.destroyFrameBufferObject(frameBuffers);
         logicalDevice.destroyGraphicsPipeline(pipeline);
         logicalDevice.destroySwapchain(swapchain);
         physicalDevice.destroyLogicalDevice(logicalDevice);
-        vkDestroySurfaceKHR(app.instance, surface, nullptr);
-        glfwDestroyWindow(window);
+        if (surface != nullptr)
+        {
+            vkDestroySurfaceKHR(instance.handle, surface, nullptr);
+            surface = nullptr;
+        }
+        VulkanInstance::destroyInstance(instance);
+        if (window != nullptr)
+        {
+            glfwDestroyWindow(window);
+            window = nullptr;
+        }
         glfwTerminate();
+    }
+
+    void exec()
+    {
+        VulkanPresentArgs presentArgs;
+        presentArgs.swapchain = swapchain.handle;
+        presentArgs.commandBuffers = commandBuffers;
+        presentArgs.onImageAvailable = onImageAvailable;
+        presentArgs.onRenderFinished = onRenderFinished;
+
+        while (!glfwWindowShouldClose(window)) {
+            glfwPollEvents();
+            logicalDevice.present(presentArgs);
+        }
+
+        vkDeviceWaitIdle(logicalDevice.device);
+    }
+
+    static void onWindowResize(GLFWwindow* window, int width, int height) {
+        void* userPointer = glfwGetWindowUserPointer(window);
+        if (userPointer == nullptr || width <= 0 || height <= 0)
+            return;
+        auto& app = *(VulkanApp*)userPointer;
+    }
+};
+
+int main(int argc, char** argv) {
+    VulkanApp app;
+    try {
+        app.init();
+        app.exec();
+        app.quit();
         return 0;
     }
     catch (const std::exception& e) {
+        app.quit();
         std::cerr << e.what() << std::endl;
         return 1;
     }

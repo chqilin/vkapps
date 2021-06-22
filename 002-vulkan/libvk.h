@@ -46,7 +46,7 @@ struct QueueFamilyIndices
 
 struct VulkanSwapchainArgs
 {
-    VkSurfaceKHR surface;
+    VkSurfaceKHR surface = nullptr;
     VkExtent2D extent;
     int minImageCount;
     VkSurfaceFormatKHR format;
@@ -57,7 +57,7 @@ struct VulkanSwapchainArgs
 
 struct VulkanSwapchain
 {
-    VkSwapchainKHR handle;
+    VkSwapchainKHR handle = nullptr;
     VkFormat format;
     VkExtent2D extent;
     std::vector<VkImage> images;
@@ -75,9 +75,9 @@ struct VulkanGraphicsPipelineArgs
 
 struct VulkanGraphicsPipeline
 {
-    VkPipeline handle;
-    VkShaderModule vert;
-    VkShaderModule frag;
+    VkPipeline handle = nullptr;
+    VkShaderModule vert = nullptr;
+    VkShaderModule frag = nullptr;
     VkViewport viewport;
     VkRect2D scissor;
     VkPipelineLayout layout;
@@ -114,9 +114,9 @@ struct VulkanPresentArgs
 
 struct VulkanLogicalDevice
 {
-    VkDevice device;
-    VkQueue queue;
-    VkCommandPool commandPool;
+    VkDevice device = nullptr;
+    VkQueue queue = nullptr;
+    VkCommandPool commandPool = nullptr;
 
     VulkanSwapchain createSwapchain(const VulkanSwapchainArgs& args) const;
     void destroySwapchain(VulkanSwapchain& swapchain) const;
@@ -140,7 +140,7 @@ struct VulkanLogicalDevice
 
 struct VulkanPhysicalDevice
 {
-    VkPhysicalDevice device;
+    VkPhysicalDevice device = nullptr;
     VkPhysicalDeviceProperties props;
     VkPhysicalDeviceFeatures features;
     VkPhysicalDeviceLimits limits;
@@ -155,33 +155,27 @@ struct VulkanPhysicalDevice
     VulkanSwapchainSupport checkSwapchainSupport(VkSurfaceKHR surface) const;
 };
 
-struct VulkanAppArgs
+struct VulkanInstanceArgs
 {
-    const char* appName;
-    uint32_t appVersion;
+    const char* appName = nullptr;
+    uint32_t appVersion = 0;
     std::vector<const char*> extensions;
     std::vector<const char*> layers;
 };
 
-class VulkanApp
+struct VulkanInstance
 {
-public:
     static std::vector<VkExtensionProperties> enumerateExtensions();
     static std::vector<VkLayerProperties> enumerateLayers();
 
-public:
-    VulkanApp();
-    virtual ~VulkanApp();
-    void init(const VulkanAppArgs& args);
-    void quit();
+    static VulkanInstance createInstance(const VulkanInstanceArgs& args);
+    static void destroyInstance(VulkanInstance& instance);
+
+    VkInstance handle = nullptr;
+    VulkanExtensionFactory extensionFactory;
+    VkDebugReportCallbackEXT debugCallback = nullptr;
 
     std::vector<VulkanPhysicalDevice> enumeratePhysicalDevices();
-
-
-public:
-    VkInstance instance;
-    VulkanExtensionFactory extensionFactory;
-    VkDebugReportCallbackEXT debugCallback;
 };
 
 #endif//_LIBVK_H_

@@ -373,7 +373,7 @@ VkSemaphore VulkanLogicalDevice::createSemaphore() const
     sci.pNext = nullptr;
 
     VkSemaphore semaphore;
-    if(vkCreateSemaphore(device, &sci, nullptr, &semaphore) != VK_SUCCESS)
+    if (vkCreateSemaphore(device, &sci, nullptr, &semaphore) != VK_SUCCESS)
     {
         throw std::runtime_error("Create semaphore failed.");
     }
@@ -383,7 +383,7 @@ VkSemaphore VulkanLogicalDevice::createSemaphore() const
 
 void VulkanLogicalDevice::destroySemaphore(VkSemaphore& semaphore) const
 {
-    if(semaphore != VK_NULL_HANDLE)
+    if (semaphore != VK_NULL_HANDLE)
     {
         vkDestroySemaphore(device, semaphore, nullptr);
     }
@@ -418,7 +418,9 @@ std::vector<VkCommandBuffer> VulkanLogicalDevice::beginCommandBuffers(
             throw std::runtime_error("Begin command-buffer failed.");
         }
 
-        VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        VkClearValue clearValue;
+        clearValue.color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+
         VkRenderPassBeginInfo rpbi = {};
         rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rpbi.renderPass = pipeline.renderPass;
@@ -429,7 +431,7 @@ std::vector<VkCommandBuffer> VulkanLogicalDevice::beginCommandBuffers(
             (uint32_t)pipeline.viewport.height
         };
         rpbi.clearValueCount = 1;
-        rpbi.pClearValues = &clearColor;
+        rpbi.pClearValues = &clearValue;
         vkCmdBeginRenderPass(commandBuffers[i], &rpbi, VK_SUBPASS_CONTENTS_INLINE);
 
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle);
@@ -455,13 +457,13 @@ void VulkanLogicalDevice::present(const VulkanPresentArgs& args) const
 {
     uint32_t imageIndex = -1;
     vkAcquireNextImageKHR(
-        device, args.swapchain, 
-        std::numeric_limits<uint64_t>::max(), 
+        device, args.swapchain,
+        std::numeric_limits<uint64_t>::max(),
         args.onImageAvailable, VK_NULL_HANDLE,
         &imageIndex
     );
 
-    VkPipelineStageFlags waitStageFlags = 
+    VkPipelineStageFlags waitStageFlags =
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     VkSubmitInfo submitInfo = {};
@@ -474,7 +476,7 @@ void VulkanLogicalDevice::present(const VulkanPresentArgs& args) const
     submitInfo.pCommandBuffers = &args.commandBuffers[imageIndex];
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &args.onRenderFinished;
-    if(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+    if (vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
     {
         throw std::runtime_error("Submit failed.");
     }
@@ -488,7 +490,7 @@ void VulkanLogicalDevice::present(const VulkanPresentArgs& args) const
     presentInfo.pSwapchains = &args.swapchain;
     presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr;
-    if(vkQueuePresentKHR(queue, &presentInfo) != VK_SUCCESS)
+    if (vkQueuePresentKHR(queue, &presentInfo) != VK_SUCCESS)
     {
         throw std::runtime_error("Present failed.");
     }
@@ -633,7 +635,7 @@ VulkanSwapchainSupport VulkanPhysicalDevice::checkSwapchainSupport(VkSurfaceKHR 
     return support;
 }
 
-std::vector<VkExtensionProperties> VulkanApp::enumerateExtensions()
+std::vector<VkExtensionProperties> VulkanInstance::enumerateExtensions()
 {
     uint32_t count = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
@@ -642,7 +644,7 @@ std::vector<VkExtensionProperties> VulkanApp::enumerateExtensions()
     return list;
 }
 
-std::vector<VkLayerProperties> VulkanApp::enumerateLayers()
+std::vector<VkLayerProperties> VulkanInstance::enumerateLayers()
 {
     uint32_t count = 0;
     vkEnumerateInstanceLayerProperties(&count, nullptr);
@@ -651,19 +653,10 @@ std::vector<VkLayerProperties> VulkanApp::enumerateLayers()
     return list;
 }
 
-VulkanApp::VulkanApp()
-    : instance(nullptr)
-    , extensionFactory()
-    , debugCallback(nullptr)
-{}
-
-VulkanApp::~VulkanApp()
+VulkanInstance VulkanInstance::createInstance(const VulkanInstanceArgs& args)
 {
-    this->quit();
-}
+    VulkanInstance instance;
 
-void VulkanApp::init(const VulkanAppArgs& args)
-{
     VkResult ret = VK_SUCCESS;
 
     VkApplicationInfo app = {};
@@ -683,13 +676,13 @@ void VulkanApp::init(const VulkanAppArgs& args)
     create.enabledLayerCount = (uint32_t)args.layers.size();
     create.ppEnabledLayerNames = args.layers.data();
 
-    ret = vkCreateInstance(&create, nullptr, &instance);
+    ret = vkCreateInstance(&create, nullptr, &instance.handle);
     if (ret != VK_SUCCESS)
     {
         throw std::runtime_error("init vulkan instance failed.");
     }
 
-    extensionFactory.init(instance);
+    instance.extensionFactory.init(instance.handle);
 
     bool enabledDebug = false;
     for (auto& layer : args.layers)
@@ -709,35 +702,38 @@ void VulkanApp::init(const VulkanAppArgs& args)
         createInfo.pfnCallback = globalDebugCallback;
         createInfo.pUserData = nullptr;
 
-        auto func = extensionFactory.vkCreateDebugReportCallbackEXT;
-        ret = func(instance, &createInfo, nullptr, &debugCallback);
+        auto func = instance.extensionFactory.vkCreateDebugReportCallbackEXT;
+        ret = func(instance.handle, &createInfo, nullptr, &instance.debugCallback);
         if (ret != VK_SUCCESS)
         {
             throw std::runtime_error("create vulkan debug callback failed.");
         }
     }
+
+    return instance;
 }
 
-void VulkanApp::quit()
+void VulkanInstance::destroyInstance(VulkanInstance& instance)
 {
-    if (debugCallback != nullptr)
+    if (instance.handle == nullptr)
+        return;
+
+    if (instance.debugCallback != nullptr)
     {
-        extensionFactory.vkDestroyDebugReportCallbackEXT(instance, debugCallback, nullptr);
-        debugCallback = nullptr;
+        instance.extensionFactory.vkDestroyDebugReportCallbackEXT(instance.handle, instance.debugCallback, nullptr);
+        instance.debugCallback = nullptr;
     }
-    if (instance != nullptr)
-    {
-        vkDestroyInstance(instance, nullptr);
-        instance = nullptr;
-    }
+
+    vkDestroyInstance(instance.handle, nullptr);
+    instance.handle = nullptr;
 }
 
-std::vector<VulkanPhysicalDevice> VulkanApp::enumeratePhysicalDevices()
+std::vector<VulkanPhysicalDevice> VulkanInstance::enumeratePhysicalDevices()
 {
     uint32_t count = 0;
-    vkEnumeratePhysicalDevices(instance, &count, nullptr);
+    vkEnumeratePhysicalDevices(handle, &count, nullptr);
     std::vector<VkPhysicalDevice> devices(count);
-    vkEnumeratePhysicalDevices(instance, &count, devices.data());
+    vkEnumeratePhysicalDevices(handle, &count, devices.data());
 
     std::vector<VulkanPhysicalDevice> list(count);
     for (size_t i = 0; i < count; i++)
