@@ -31,7 +31,7 @@ set(_LIBRARY_FILES
         "glfw3"
         "libvulkan.dylib"
         "libvulkan.1.dylib"
-        "libvulkan.1.3.280.dylib"
+        "libvulkan.1.2.198.dylib"
 )
 
 message("_HEADER_DIRS = ${_HEADER_DIRS}")
